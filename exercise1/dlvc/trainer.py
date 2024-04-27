@@ -3,9 +3,11 @@ from typing import Tuple
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from tqdm import tqdm
+import numpy as np
 
 # for wandb users:
 from dlvc.wandb_logger import WandBLogger
+
 
 class BaseTrainer(metaclass=ABCMeta):
     '''
@@ -36,12 +38,14 @@ class BaseTrainer(metaclass=ABCMeta):
 
         pass
 
+
 class ImgClassificationTrainer(BaseTrainer):
     """
     Class that stores the logic for training a model for image classification.
     """
-    def __init__(self, 
-                 model, 
+
+    def __init__(self,
+                 model,
                  optimizer,
                  loss_fn,
                  lr_scheduler,
@@ -50,7 +54,7 @@ class ImgClassificationTrainer(BaseTrainer):
                  train_data,
                  val_data,
                  device,
-                 num_epochs: int, 
+                 num_epochs: int,
                  training_save_dir: Path,
                  batch_size: int = 4,
                  val_frequency: int = 5) -> None:
@@ -75,14 +79,26 @@ class ImgClassificationTrainer(BaseTrainer):
             - Stores given variables as instance variables for use in other class methods e.g. self.model = model.
             - Creates data loaders for the train and validation datasets
             - Optionally use weights & biases for tracking metrics and loss: initializer W&B logger
-
         '''
-        
 
-        ## TODO implement
-        pass
-        
-        
+        self.model = model
+        self.optimizer = optimizer
+        self.loss_fn = loss_fn
+        self.lr_scheduler = lr_scheduler
+        self.train_metric = train_metric
+        self.val_metric = val_metric
+        self.train_data = train_data
+        self.val_data = val_data
+        self.device = device
+        self.num_epochs = num_epochs
+        self.training_save_dir = training_save_dir
+        self.batch_size = batch_size
+        self.val_frequency = val_frequency
+
+        self.train_loader = torch.utils.data.DataLoader(
+            train_data, batch_size=batch_size, shuffle=True)
+        self.val_loader = torch.utils.data.DataLoader(
+            val_data, batch_size=batch_size, shuffle=False)
 
     def _train_epoch(self, epoch_idx: int) -> Tuple[float, float, float]:
         """
@@ -92,13 +108,26 @@ class ImgClassificationTrainer(BaseTrainer):
 
         epoch_idx (int): Current epoch number
         """
-        ## TODO implement
-        pass
+        print(f"Epoch {epoch_idx}")
+        loss_list = []
+        self.train_metric.reset()
+        for batch, labels in self.train_loader:
+            batch, labels = batch.to(self.device), labels.to(self.device)
 
-        
+            self.optimizer.zero_grad()
+            predictions = self.model(batch)
+            loss = self.loss_fn(predictions, labels)
+            loss.backward()
+            self.optimizer.step()
 
+            self.train_metric.update(predictions, labels)
+            loss_list.append(loss.item())
+        self.lr_scheduler.step()
+        print(f"Loss: {np.mean(loss_list)}")
+        print(self.train_metric.__str__())
+        return np.mean(loss_list), self.train_metric.accuracy(), self.train_metric.per_class_accuracy()
 
-    def _val_epoch(self, epoch_idx:int) -> Tuple[float, float, float]:
+    def _val_epoch(self, epoch_idx: int) -> Tuple[float, float, float]:
         """
         Validation logic for one epoch. 
         Prints current metrics at end of epoch.
@@ -106,10 +135,21 @@ class ImgClassificationTrainer(BaseTrainer):
 
         epoch_idx (int): Current epoch number
         """
-        ## TODO implement
-        pass
+        print(f"Validation Epoch {epoch_idx}")
+        with torch.no_grad():
+            loss_list = []
+            self.val_metric.reset()
+            for batch, labels in self.val_loader:
+                batch, labels = batch.to(self.device), labels.to(self.device)
 
-        
+                predictions = self.model(batch)
+                loss = self.loss_fn(predictions, labels)
+
+                self.val_metric.update(predictions, labels)
+                loss_list.append(loss.item())
+            print(f"Validation Loss: {np.mean(loss_list)}")
+            print(self.val_metric.__str__())
+            return np.mean(loss_list), self.val_metric.accuracy(), self.val_metric.per_class_accuracy()
 
     def train(self) -> None:
         """
@@ -119,15 +159,13 @@ class ImgClassificationTrainer(BaseTrainer):
         than currently saved best mean per class accuracy. 
         Depending on the val_frequency parameter, validation is not performed every epoch.
         """
-        ## TODO implement
-        pass
-
-                
-
-
-
-
-            
-            
-
-
+        best_val_pc_acc = 0
+        for epoch in range(self.num_epochs):
+            loss_train, acc_train, pc_acc_train = self._train_epoch(epoch)
+            if epoch % self.val_frequency == 0:
+                loss_val, acc_val, pc_acc_val = self._val_epoch(epoch)
+                if pc_acc_val > best_val_pc_acc:
+                    best_val_pc_acc = pc_acc_val
+                    # add filename to path?
+                    self.model.save(self.training_save_dir, suffix=f"_{epoch}")
+            print("\n")
