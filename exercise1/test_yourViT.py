@@ -10,8 +10,11 @@ from dlvc.models.class_model import DeepClassifier
 from dlvc.metrics import Accuracy
 from dlvc.datasets.cifar10 import CIFAR10Dataset
 from dlvc.datasets.dataset import Subset
+from dlvc.models.vit import SimpleViT
 import numpy as np
 
+## SET CONGFIG_NAME TO THE NAME OF THE CONFIGURATION YOU WANT TO TEST
+CONFIG_NAME = "initial_config"
 
 
 
@@ -26,7 +29,7 @@ def test(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_test_data = len(test_data)
 
-    model = DeepClassifier(resnet18(num_classes=10))
+    model = DeepClassifier(SimpleViT(image_size=32, patch_size=4, num_classes=10, dim=64, depth=6, heads=8, mlp_dim=128))
     model.load(args.path_to_trained_model)
     model.to(device)
 
@@ -54,7 +57,7 @@ def test(args):
 
 if __name__ == "__main__":
     ## Feel free to change this part - you do not have to use this argparse and gpu handling
-    args = argparse.ArgumentParser(description='Training')
+    args = argparse.ArgumentParser(description='Testing')
     args.add_argument('-d', '--gpu_id', default='5', type=str,
                       help='index of which GPU to use')
     
@@ -62,6 +65,6 @@ if __name__ == "__main__":
         args = args.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
     args.gpu_id = 0 
-    args.path_to_trained_model = os.path.join("tested_configs", "resnet18", "initial_config", "model.pt")
+    args.path_to_trained_model = os.path.join("tested_configs", "vit", CONFIG_NAME, "model.pt")
 
     test(args)
