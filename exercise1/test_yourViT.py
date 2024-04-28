@@ -16,8 +16,6 @@ import numpy as np
 ## SET CONGFIG_NAME TO THE NAME OF THE CONFIGURATION YOU WANT TO TEST
 CONFIG_NAME = "initial_config"
 
-
-
 def test(args):
     transform = v2.Compose([v2.ToImage(), 
                             v2.ToDtype(torch.float32, scale=True),
@@ -36,9 +34,11 @@ def test(args):
     loss_fn = torch.nn.CrossEntropyLoss()
     
     test_metric = Accuracy(classes=test_data.classes)
+    
+    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+    params = sum([np.prod(p.size()) for p in model_parameters])
+    print(f"Number of trainable parameters: {params}")
 
-    ### Below implement testing loop and print final loss 
-    ### and metrics to terminal after testing is finished
     model.eval()
     with torch.no_grad():
         loss_list = []
@@ -56,7 +56,6 @@ def test(args):
         print(test_metric.__str__())
 
 if __name__ == "__main__":
-    ## Feel free to change this part - you do not have to use this argparse and gpu handling
     args = argparse.ArgumentParser(description='Testing')
     args.add_argument('-d', '--gpu_id', default='5', type=str,
                       help='index of which GPU to use')

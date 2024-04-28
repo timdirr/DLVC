@@ -1,4 +1,3 @@
-# Feel free to change the imports according to your implementation and needs
 import argparse
 import os
 import torch
@@ -7,22 +6,16 @@ from pathlib import Path
 import os
 import shutil
 
-from dlvc.models.class_model import DeepClassifier  # etc. change to your model
+from dlvc.models.class_model import DeepClassifier 
+from torchvision.models import resnet18
 from dlvc.metrics import Accuracy
 from dlvc.trainer import ImgClassificationTrainer
 from dlvc.datasets.cifar10 import CIFAR10Dataset
 from dlvc.datasets.dataset import Subset
-from torchvision.models import resnet18
 
 CONFIG_NAME = "initial_config"
 
 def train(args):
-
-    # Implement this function so that it trains a specific model as described in the instruction.md file
-    # feel free to change the code snippets given here, they are just to give you an initial structure
-    # but do not have to be used if you want to do it differently
-    # For device handling you can take a look at pytorch documentation
-
     train_transform = v2.Compose([v2.ToImage(),
                                   v2.ToDtype(torch.float32, scale=True),
                                   v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
@@ -63,14 +56,12 @@ def train(args):
                                        device,
                                        args.num_epochs,
                                        model_save_dir,
-                                       batch_size=128,  # feel free to change
+                                       batch_size=128,  
                                        val_frequency=val_frequency)
     trainer.train()
 
 
 if __name__ == "__main__":
-    # Feel free to change this part - you do not have to use this argparse and gpu handling
-
     args = argparse.ArgumentParser(description='Training')
     args.add_argument('-d', '--gpu_id', default='0', type=str,
                       help='index of which GPU to use')
@@ -80,6 +71,7 @@ if __name__ == "__main__":
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
     args.gpu_id = 0
     args.num_epochs = 30
+
     args.save_dir = os.path.join("tested_configs", "resnet18", CONFIG_NAME)
     os.makedirs(args.save_dir, exist_ok=True)
     destination = os.path.join(args.save_dir, "train.py")

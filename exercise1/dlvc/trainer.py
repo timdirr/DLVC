@@ -6,10 +6,6 @@ from tqdm import tqdm
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
-# for wandb users:
-# from dlvc.wandb_logger import WandBLogger
-
-
 class BaseTrainer(metaclass=ABCMeta):
     '''
     Base class of all Trainers.
@@ -171,12 +167,11 @@ class ImgClassificationTrainer(BaseTrainer):
             loss_train, acc_train, pc_acc_train = self._train_epoch(epoch)
             if epoch % self.val_frequency == 0:
                 loss_val, acc_val, pc_acc_val = self._val_epoch(epoch)
+                self.write_to_tensorboard(epoch, loss_val, acc_val, pc_acc_val, "val")
                 if pc_acc_val > best_val_pc_acc:
                     best_val_pc_acc = pc_acc_val
                     self.model.save(self.training_save_dir)
-                self.write_to_tensorboard(epoch, loss_val, acc_val, pc_acc_val, "val")
             self.write_to_tensorboard(epoch, loss_train, acc_train, pc_acc_train, "train")
-            print("\n")
 
     def write_to_tensorboard(self, epoch, loss, acc, pc_acc, mode):
         self.writer.add_scalar(f'Loss/{mode}', loss, epoch)

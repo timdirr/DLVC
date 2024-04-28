@@ -13,7 +13,7 @@ from dlvc.trainer import ImgClassificationTrainer
 from dlvc.datasets.cifar10 import CIFAR10Dataset
 from dlvc.datasets.dataset import Subset
 
-CONFIG_NAME = "initial_config_bigger_kernels"
+CONFIG_NAME = "initial_config"
 
 def train(args):
     train_transform = v2.Compose([v2.ToImage(),

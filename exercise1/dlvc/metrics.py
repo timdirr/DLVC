@@ -48,8 +48,6 @@ class Accuracy(PerformanceMeasure):
         '''
         Resets the internal state.
         '''
-        ###### implemented code ########
-
         self.target_list = []
         self.prediction_list = []
         self.current_class_acc = np.zeros(len(self.classes))
@@ -62,7 +60,6 @@ class Accuracy(PerformanceMeasure):
         target must have shape (s,) and values between 0 and c-1 (true class labels).
         Raises ValueError if the data shape or values are unsupported.
         '''
-
         prediction = prediction.cpu()
         target = target.cpu()
 
@@ -89,8 +86,6 @@ class Accuracy(PerformanceMeasure):
         '''
         Return a string representation of the performance, accuracy and per class accuracy.
         '''
-
-        #### implemented code ####
         current_acc = self.accuracy()
         curr_per_class_acc = self.per_class_accuracy()
 
@@ -111,8 +106,6 @@ class Accuracy(PerformanceMeasure):
         Compute and return the accuracy as a float between 0 and 1.
         Returns 0 if no data is available (after resets).
         '''
-
-        #### implemented code ####
         if len(self.target_list) != 0 and len(self.prediction_list) != 0:
 
             target_arr = np.array(self.target_list)
@@ -131,8 +124,6 @@ class Accuracy(PerformanceMeasure):
         Compute and return the per class accuracy as a float between 0 and 1.
         Returns 0 if no data is available (after resets).
         '''
-
-        #### implemented code ####
         target_arr = np.array(self.target_list)
         prediction_arr = np.array(self.prediction_list)
 

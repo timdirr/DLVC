@@ -1,14 +1,10 @@
 import pickle
 from typing import Tuple
 import numpy as np
-
-
-from dlvc.datasets.dataset import Subset, ClassificationDataset
-
-
-# additional imports
 import os
 from PIL import Image
+
+from dlvc.datasets.dataset import Subset, ClassificationDataset
 
 class CIFAR10Dataset(ClassificationDataset):
     '''
@@ -32,8 +28,6 @@ class CIFAR10Dataset(ClassificationDataset):
 
         self.classes = ('plane', 'car', 'bird', 'cat',
                         'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
-        ######## created variables ########
 
         self.fdir = fdir
         self.subset = subset
@@ -83,8 +77,6 @@ class CIFAR10Dataset(ClassificationDataset):
         '''
         Returns the number of samples in the dataset.
         '''
-        ######## implemented Code ########
-
         return self.data[1].shape[0]
 
     def __getitem__(self, idx: int) -> Tuple:
@@ -94,21 +86,18 @@ class CIFAR10Dataset(ClassificationDataset):
         Applies transforms if not None.
         Raises IndexError if the index is out of bounds.
         '''
-        ######## implemented Code ########
-
         if idx < 0 or idx >= len(self.data[0]):
             raise IndexError("Index is out of bounds")
 
         image = self.data[0][idx]
         label = self.data[1][idx]
 
-        # needs to be done otherwise transform does not apply directly on numpy arrays
-        image = Image.fromarray(image, mode='RGB')
 
         if self.transform != None:
+            # needs to be done otherwise transform does not apply directly on numpy arrays
+            image = Image.fromarray(image, mode='RGB')
             image = self.transform(image)
-
-        image = np.array(image)
+            image = np.array(image)
 
         return (image, label)
 
@@ -116,6 +105,4 @@ class CIFAR10Dataset(ClassificationDataset):
         '''
         Returns the number of classes.
         '''
-        ######## implemented Code ########
-
         return len(self.classes)
