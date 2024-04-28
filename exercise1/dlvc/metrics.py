@@ -65,6 +65,9 @@ class Accuracy(PerformanceMeasure):
 
         # TODO: wird hier danach abgefragt ob die Summe 1 ergibt? with each row being a class-score vector
 
+        prediction = prediction.cpu()
+        target = target.cpu()
+
         # Check if prediction has the correct shape
         if prediction.shape[1] != len(self.classes):
             raise ValueError(f"Prediction tensors second dimension must match length of classes: {

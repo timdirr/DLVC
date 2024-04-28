@@ -1,3 +1,5 @@
 exercise0/
 .DS_Store
 __pycache__
+exercise1/runs/
+exercise1/saved_models/

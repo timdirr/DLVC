@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from tqdm import tqdm
 import numpy as np
+from torch.utils.tensorboard import SummaryWriter
 
 # for wandb users:
 # from dlvc.wandb_logger import WandBLogger
@@ -99,6 +100,8 @@ class ImgClassificationTrainer(BaseTrainer):
             train_data, batch_size=batch_size, shuffle=True)
         self.val_loader = torch.utils.data.DataLoader(
             val_data, batch_size=batch_size, shuffle=False)
+        
+        self.writer = SummaryWriter()
 
     def _train_epoch(self, epoch_idx: int) -> Tuple[float, float, float]:
         """
@@ -113,6 +116,7 @@ class ImgClassificationTrainer(BaseTrainer):
         self.model.train()
         self.train_metric.reset()
         for batch, labels in self.train_loader:
+            labels = labels.type(torch.LongTensor)
             batch, labels = batch.to(self.device), labels.to(self.device)
 
             self.optimizer.zero_grad()
@@ -142,6 +146,7 @@ class ImgClassificationTrainer(BaseTrainer):
             loss_list = []
             self.val_metric.reset()
             for batch, labels in self.val_loader:
+                labels = labels.type(torch.LongTensor)
                 batch, labels = batch.to(self.device), labels.to(self.device)
 
                 predictions = self.model(batch)
@@ -170,4 +175,11 @@ class ImgClassificationTrainer(BaseTrainer):
                     best_val_pc_acc = pc_acc_val
                     self.model.save(self.training_save_dir,
                                     suffix=f"epoch_{epoch}")
+                self.writer.add_scalar('Loss/val', loss_val, epoch)
+                self.writer.add_scalar('Accuracy/val', acc_val, epoch)
+                self.writer.add_scalar('PerClassAcc/val', pc_acc_val, epoch)
+
+            self.writer.add_scalar('Loss/train', loss_train, epoch)
+            self.writer.add_scalar('Accuracy/train', acc_train, epoch)
+            self.writer.add_scalar('PerClassAcc/train', pc_acc_train, epoch)
             print("\n")
