@@ -63,8 +63,6 @@ class Accuracy(PerformanceMeasure):
         Raises ValueError if the data shape or values are unsupported.
         '''
 
-        # TODO: wird hier danach abgefragt ob die Summe 1 ergibt? with each row being a class-score vector
-
         prediction = prediction.cpu()
         target = target.cpu()
 
@@ -86,13 +84,6 @@ class Accuracy(PerformanceMeasure):
             np.argmax(prediction.detach().numpy(), -1))
         self.target_list += list(np.array(target))
         self.prediction_list += list(prediction_argmax)
-        # TODO errors
-
-        # do we really need to call this here? unnecessary performance overhead
-        # self.accuracy()
-        # self.per_class_accuracy()
-
-        return None  # muss das?
 
     def __str__(self) -> str:
         '''

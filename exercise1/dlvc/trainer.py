@@ -167,19 +167,19 @@ class ImgClassificationTrainer(BaseTrainer):
         Depending on the val_frequency parameter, validation is not performed every epoch.
         """
         best_val_pc_acc = 0
-        for epoch in range(self.num_epochs):
+        for epoch in range(1, self.num_epochs + 1):
             loss_train, acc_train, pc_acc_train = self._train_epoch(epoch)
-            if (epoch+1) % self.val_frequency == 0:
+            if epoch % self.val_frequency == 0:
                 loss_val, acc_val, pc_acc_val = self._val_epoch(epoch)
                 if pc_acc_val > best_val_pc_acc:
                     best_val_pc_acc = pc_acc_val
                     self.model.save(self.training_save_dir,
                                     suffix=f"epoch_{epoch}")
-                self.writer.add_scalar('Loss/val', loss_val, epoch)
-                self.writer.add_scalar('Accuracy/val', acc_val, epoch)
-                self.writer.add_scalar('PerClassAcc/val', pc_acc_val, epoch)
-
-            self.writer.add_scalar('Loss/train', loss_train, epoch)
-            self.writer.add_scalar('Accuracy/train', acc_train, epoch)
-            self.writer.add_scalar('PerClassAcc/train', pc_acc_train, epoch)
+                self.write_to_tensorboard(epoch, loss_val, acc_val, pc_acc_val, "val")
+            self.write_to_tensorboard(epoch, loss_train, acc_train, pc_acc_train, "train")
             print("\n")
+
+    def write_to_tensorboard(self, epoch, loss, acc, pc_acc, mode):
+        self.writer.add_scalar(f'Loss/{mode}', loss, epoch)
+        self.writer.add_scalar(f'Accuracy/{mode}', acc, epoch)
+        self.writer.add_scalar(f'PerClassAcc/{mode}', pc_acc, epoch)

@@ -5,6 +5,7 @@ import torch
 import torchvision.transforms.v2 as v2
 from pathlib import Path
 import os
+import datetime
 
 from dlvc.models.class_model import DeepClassifier  # etc. change to your model
 from dlvc.metrics import Accuracy
@@ -46,8 +47,9 @@ def train(args):
     val_metric = Accuracy(classes=val_data.classes)
     val_frequency = 5
 
-    model_save_dir = Path("saved_models")
-    model_save_dir.mkdir(exist_ok=True)
+    path = os.path.join("saved_models", "resnet18", datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
+    model_save_dir = Path(path)
+    os.makedirs(path, exist_ok=True)
 
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
