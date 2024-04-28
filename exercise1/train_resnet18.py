@@ -1,3 +1,4 @@
+# Feel free to change the imports according to your implementation and needs
 import argparse
 import os
 import torch
@@ -6,14 +7,14 @@ from pathlib import Path
 import os
 import shutil
 
-from dlvc.models.class_model import DeepClassifier 
-from torchvision.models import resnet18
+from dlvc.models.class_model import DeepClassifier  # etc. change to your model
 from dlvc.metrics import Accuracy
 from dlvc.trainer import ImgClassificationTrainer
 from dlvc.datasets.cifar10 import CIFAR10Dataset
 from dlvc.datasets.dataset import Subset
+from torchvision.models import resnet18
 
-CONFIG_NAME = "initial_config"
+CONFIG_NAME = "initial_config_lr_fixed"
 
 def train(args):
     train_transform = v2.Compose([v2.ToImage(),
@@ -35,6 +36,7 @@ def train(args):
     model = DeepClassifier(resnet18(num_classes=10))
     model.to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, amsgrad=True)
+    optimizer.param_groups[0]['initial_lr'] = 0.001
     loss_fn = torch.nn.CrossEntropyLoss()
 
     train_metric = Accuracy(classes=train_data.classes)
@@ -43,7 +45,7 @@ def train(args):
 
     model_save_dir = Path(args.save_dir)
 
-    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+    lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9, last_epoch=args.num_epochs)
 
     trainer = ImgClassificationTrainer(model,
                                        optimizer,
@@ -56,7 +58,7 @@ def train(args):
                                        device,
                                        args.num_epochs,
                                        model_save_dir,
-                                       batch_size=128,  
+                                       batch_size=128, 
                                        val_frequency=val_frequency)
     trainer.train()
 
