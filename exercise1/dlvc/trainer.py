@@ -6,7 +6,7 @@ from tqdm import tqdm
 import numpy as np
 
 # for wandb users:
-from dlvc.wandb_logger import WandBLogger
+# from dlvc.wandb_logger import WandBLogger
 
 
 class BaseTrainer(metaclass=ABCMeta):
@@ -110,6 +110,7 @@ class ImgClassificationTrainer(BaseTrainer):
         """
         print(f"Epoch {epoch_idx}")
         loss_list = []
+        self.model.train()
         self.train_metric.reset()
         for batch, labels in self.train_loader:
             batch, labels = batch.to(self.device), labels.to(self.device)
@@ -136,6 +137,7 @@ class ImgClassificationTrainer(BaseTrainer):
         epoch_idx (int): Current epoch number
         """
         print(f"Validation Epoch {epoch_idx}")
+        self.model.eval()
         with torch.no_grad():
             loss_list = []
             self.val_metric.reset()
@@ -166,6 +168,6 @@ class ImgClassificationTrainer(BaseTrainer):
                 loss_val, acc_val, pc_acc_val = self._val_epoch(epoch)
                 if pc_acc_val > best_val_pc_acc:
                     best_val_pc_acc = pc_acc_val
-                    # add filename to path?
-                    self.model.save(self.training_save_dir, suffix=f"_{epoch}")
+                    self.model.save(self.training_save_dir,
+                                    suffix=f"epoch_{epoch}")
             print("\n")
