@@ -5,7 +5,7 @@ import torch
 import torchvision.transforms.v2 as v2
 from pathlib import Path
 import os
-import datetime
+import shutil
 
 from dlvc.models.class_model import DeepClassifier  # etc. change to your model
 from dlvc.metrics import Accuracy
@@ -14,6 +14,7 @@ from dlvc.datasets.cifar10 import CIFAR10Dataset
 from dlvc.datasets.dataset import Subset
 from torchvision.models import resnet18
 
+CONFIG_NAME = "initial_config"
 
 def train(args):
 
@@ -47,9 +48,7 @@ def train(args):
     val_metric = Accuracy(classes=val_data.classes)
     val_frequency = 5
 
-    path = os.path.join("saved_models", "resnet18", datetime.datetime.now().strftime('%Y_%m_%d_%H_%M_%S'))
-    model_save_dir = Path(path)
-    os.makedirs(path, exist_ok=True)
+    model_save_dir = Path(args.save_dir)
 
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
@@ -71,6 +70,7 @@ def train(args):
 
 if __name__ == "__main__":
     # Feel free to change this part - you do not have to use this argparse and gpu handling
+
     args = argparse.ArgumentParser(description='Training')
     args.add_argument('-d', '--gpu_id', default='0', type=str,
                       help='index of which GPU to use')
@@ -80,5 +80,9 @@ if __name__ == "__main__":
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
     args.gpu_id = 0
     args.num_epochs = 30
+    args.save_dir = os.path.join("tested_configs", "resnet18", CONFIG_NAME)
+    os.makedirs(args.save_dir, exist_ok=True)
+    destination = os.path.join(args.save_dir, "train.py")
+    shutil.copy(__file__, destination)
 
     train(args)

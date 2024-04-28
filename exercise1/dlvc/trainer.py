@@ -101,7 +101,7 @@ class ImgClassificationTrainer(BaseTrainer):
         self.val_loader = torch.utils.data.DataLoader(
             val_data, batch_size=batch_size, shuffle=False)
         
-        self.writer = SummaryWriter()
+        self.writer = SummaryWriter(log_dir=training_save_dir)
 
     def _train_epoch(self, epoch_idx: int) -> Tuple[float, float, float]:
         """
@@ -173,8 +173,7 @@ class ImgClassificationTrainer(BaseTrainer):
                 loss_val, acc_val, pc_acc_val = self._val_epoch(epoch)
                 if pc_acc_val > best_val_pc_acc:
                     best_val_pc_acc = pc_acc_val
-                    self.model.save(self.training_save_dir,
-                                    suffix=f"epoch_{epoch}")
+                    self.model.save(self.training_save_dir)
                 self.write_to_tensorboard(epoch, loss_val, acc_val, pc_acc_val, "val")
             self.write_to_tensorboard(epoch, loss_train, acc_train, pc_acc_train, "train")
             print("\n")
