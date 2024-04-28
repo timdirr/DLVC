@@ -169,7 +169,7 @@ class ImgClassificationTrainer(BaseTrainer):
         best_val_pc_acc = 0
         for epoch in range(self.num_epochs):
             loss_train, acc_train, pc_acc_train = self._train_epoch(epoch)
-            if epoch % self.val_frequency == 0:
+            if (epoch+1) % self.val_frequency == 0:
                 loss_val, acc_val, pc_acc_val = self._val_epoch(epoch)
                 if pc_acc_val > best_val_pc_acc:
                     best_val_pc_acc = pc_acc_val
