@@ -1,4 +1,3 @@
-# Feel free to change the imports according to your implementation and needs
 import argparse
 import os
 import torch
@@ -7,7 +6,7 @@ from pathlib import Path
 import os
 import shutil
 
-from dlvc.models.class_model import DeepClassifier  # etc. change to your model
+from dlvc.models.class_model import DeepClassifier  
 from dlvc.metrics import Accuracy
 from dlvc.trainer import ImgClassificationTrainer
 from dlvc.datasets.cifar10 import CIFAR10Dataset
@@ -15,7 +14,20 @@ from dlvc.datasets.dataset import Subset
 from torchvision.models import resnet18
 import torch.nn.functional as F
 
-CONFIG_NAME = "modified_resnet18_adam_cosineannealinglr"
+CONFIG = {
+    "lr": 0.002,
+    "lr_last": 0.0001, 
+    "num_epochs": 100,
+    "batch_size": 256,
+    "grad_clipping": 1,
+    "val_frequency": 5,
+    "dropout": 0.2,
+    "optimizer": "adamw",
+    "scheduler": "cosine",
+    "weight_decay": 0.1,
+    "modified": True, 
+    "momentum": None
+}
 
 def train(args):
     train_transform = v2.Compose([v2.ToImage(),
@@ -28,23 +40,28 @@ def train(args):
                                 v2.ToDtype(torch.float32, scale=True),
                                 v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    train_data = CIFAR10Dataset(
-        "cifar-10-batches-py", Subset.TRAINING, transform=train_transform)
+    train_data = CIFAR10Dataset("cifar-10-batches-py", Subset.TRAINING, transform=train_transform)
 
-    val_data = CIFAR10Dataset("cifar-10-batches-py",
-                              Subset.VALIDATION, transform=val_transform)
+    val_data = CIFAR10Dataset("cifar-10-batches-py", Subset.VALIDATION, transform=val_transform)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = DeepClassifier(resnet18(num_classes=10))
-    model.net.conv1 = torch.nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
+    if CONFIG["modified"]:
+        model.net.conv1 = torch.nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
     model.to(device)
 
-    # model.net.fc.register_forward_hook(lambda m, inp, out: F.dropout(out, p=0.2, training=m.training))
+    if CONFIG["dropout"] is not None:
+        model.net.fc.register_forward_hook(lambda m, inp, out: F.dropout(out, p=CONFIG["dropout"], training=m.training))
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, amsgrad=True, weight_decay=0.1)
-    # optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
-    # optimizer.param_groups[0]['initial_lr'] = args.lr
+    if CONFIG["optimizer"] == "adamw":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=CONFIG["lr"], amsgrad=True, weight_decay=CONFIG["weight_decay"])
+    elif CONFIG["optimizer"] == "sgd":
+        optimizer = torch.optim.SGD(model.parameters(), lr=CONFIG["lr"], momentum=0.9, weight_decay=5e-4)
+
+    optimizer.param_groups[0]['initial_lr'] = CONFIG["lr"]
+    optimizer.param_groups[0]['last_lr'] = CONFIG["lr_last"]
+
     loss_fn = torch.nn.CrossEntropyLoss()
 
     train_metric = Accuracy(classes=train_data.classes)
@@ -53,8 +70,12 @@ def train(args):
 
     model_save_dir = Path(args.save_dir)
 
-    # lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.1, epochs=args.num_epochs, steps_per_epoch=train_data.__len__())
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.num_epochs)
+    if CONFIG["scheduler"] == "cosine":
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=CONFIG["num_epochs"])
+    elif CONFIG["scheduler"] == "onecycle":
+        lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.1, epochs=CONFIG["num_epochs"], steps_per_epoch=train_data.__len__())
+    elif CONFIG["scheduler"] == "customscheduler":
+        lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=custom_lr_scheduler)
 
     trainer = ImgClassificationTrainer(model,
                                        optimizer,
@@ -65,13 +86,19 @@ def train(args):
                                        train_data,
                                        val_data,
                                        device,
-                                       args.num_epochs,
+                                       CONFIG["num_epochs"],
                                        model_save_dir,
-                                       batch_size=256, 
-                                       # grad_clipping=0.1,
+                                       batch_size=CONFIG["batch_size"], 
+                                       grad_clipping=CONFIG["grad_clipping"],
                                        val_frequency=val_frequency) 
     trainer.train()
 
+def custom_lr_scheduler(current_step: int):
+    warmup_steps = 5
+    if current_step < warmup_steps:  
+        return float(current_step / warmup_steps)
+    else:
+        return max(CONFIG["lr_last"], float(CONFIG["num_epochs"] - current_step) / float(max(1, CONFIG["num_epochs"] - warmup_steps)))
 
 if __name__ == "__main__":
     args = argparse.ArgumentParser(description='Training')
@@ -82,10 +109,23 @@ if __name__ == "__main__":
         args = args.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
     args.gpu_id = 0
-    args.num_epochs = 100
-    args.lr = 0.001
 
-    args.save_dir = os.path.join("tested_configs", "resnet18", CONFIG_NAME)
+    config_str = ""
+    if CONFIG["modified"]:
+        config_str = "mod_"
+    config_str += CONFIG["optimizer"] + "_lr_" + str(CONFIG["lr"]) + "_"
+    if CONFIG["optimizer"] == "sgd" and CONFIG["momentum"] is not None:
+        config_str += "mom_" + str(CONFIG["momentum"]) + "_"
+    config_str += CONFIG["scheduler"] + "_"
+    config_str += "ep_" + str(CONFIG["num_epochs"])
+    if CONFIG["grad_clipping"] is not None:
+        config_str += "_gclip_" + str(CONFIG["grad_clipping"])
+    if CONFIG["dropout"] is not None:
+        config_str += "_drop_" + str(CONFIG["dropout"])
+    if CONFIG["weight_decay"] is not None:
+        config_str += "_wd_" + str(CONFIG["weight_decay"])
+
+    args.save_dir = os.path.join("advanced_testing", "resnet18", config_str)
     os.makedirs(args.save_dir, exist_ok=True)
     destination = os.path.join(args.save_dir, "train.py")
     shutil.copy(__file__, destination)
