@@ -1,12 +1,12 @@
 # Resnet18
 - [x] Initial model training
-- [ ] Data augmentation (Random crops & Flipping)
-- [ ] Data augmentation (Additional)
-- [ ] Regularization (Weight Decay)
-- [ ] Regularization (Dropout)
-- [ ] Optimizer
+- [x] Data augmentation (Random crops & Flipping)
+- [x] Data augmentation (Additional)
+- [x] Regularization (Weight Decay)
+- [x] Regularization (Dropout)
+- [x] Optimizer
 - [ ] Weight initialization
-- [ ] LR scheduler
+- [x] LR scheduler
 
 # CNN
 - [ ] Initial model training

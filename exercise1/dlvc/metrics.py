@@ -89,15 +89,10 @@ class Accuracy(PerformanceMeasure):
         current_acc = self.accuracy()
         curr_per_class_acc = self.per_class_accuracy()
 
-        text = ""
-        text += f"accuracy: {current_acc}"
-        text += "\n"
-        text += f"per class accuracy: {curr_per_class_acc}"
-        text += "\n"
+        text = f"accuracy: {round(current_acc,4)}\n"
+        text += f"per class accuracy: {round(curr_per_class_acc, 4)}\n"
         for i, c in enumerate(self.classes):
-            text += f"Accuracy for class {self.classes[i]
-                                          }: is {self.current_class_acc[i]}"
-            text += "\n"
+            text += f"Accuracy for class: {self.classes[i]}   \tis {round(self.current_class_acc[i], 2)}\n"
 
         return text
 

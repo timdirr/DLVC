@@ -54,7 +54,8 @@ class ImgClassificationTrainer(BaseTrainer):
                  num_epochs: int,
                  training_save_dir: Path,
                  batch_size: int = 4,
-                 val_frequency: int = 5) -> None:
+                 val_frequency: int = 5, 
+                 grad_clipping=None) -> None:
         '''
         Args and Kwargs:
             model (nn.Module): Deep Network to train
@@ -91,11 +92,14 @@ class ImgClassificationTrainer(BaseTrainer):
         self.training_save_dir = training_save_dir
         self.batch_size = batch_size
         self.val_frequency = val_frequency
+        self.grad_clipping = grad_clipping
 
         self.train_loader = torch.utils.data.DataLoader(
             train_data, batch_size=batch_size, shuffle=True)
         self.val_loader = torch.utils.data.DataLoader(
             val_data, batch_size=batch_size, shuffle=False)
+        
+        self.one_cycle = type(self.lr_scheduler) == torch.optim.lr_scheduler.OneCycleLR
         
         self.writer = SummaryWriter(log_dir=training_save_dir)
 
@@ -107,7 +111,6 @@ class ImgClassificationTrainer(BaseTrainer):
 
         epoch_idx (int): Current epoch number
         """
-        print(f"Epoch {epoch_idx}")
         loss_list = []
         self.model.train()
         self.train_metric.reset()
@@ -119,12 +122,18 @@ class ImgClassificationTrainer(BaseTrainer):
             predictions = self.model(batch)
             loss = self.loss_fn(predictions, labels)
             loss.backward()
+            if self.grad_clipping is not None: 
+                torch.nn.utils.clip_grad_value_(self.model.parameters(), self.grad_clipping)
             self.optimizer.step()
 
             self.train_metric.update(predictions, labels)
             loss_list.append(loss.item())
-        self.lr_scheduler.step()
-        print(f"Loss: {np.mean(loss_list)}")
+            if self.one_cycle:
+                self.lr_scheduler.step()
+        if not self.one_cycle:
+            self.lr_scheduler.step()
+        print(f"Epoch {epoch_idx}")
+        print(f"Loss: {round(np.mean(loss_list), 4)}")
         print(self.train_metric.__str__())
         return np.mean(loss_list), self.train_metric.accuracy(), self.train_metric.per_class_accuracy()
 
@@ -136,7 +145,6 @@ class ImgClassificationTrainer(BaseTrainer):
 
         epoch_idx (int): Current epoch number
         """
-        print(f"Validation Epoch {epoch_idx}")
         self.model.eval()
         with torch.no_grad():
             loss_list = []
@@ -150,7 +158,8 @@ class ImgClassificationTrainer(BaseTrainer):
 
                 self.val_metric.update(predictions, labels)
                 loss_list.append(loss.item())
-            print(f"Validation Loss: {np.mean(loss_list)}")
+            print(f"Validation Epoch {epoch_idx}")
+            print(f"Validation Loss: {round(np.mean(loss_list), 4)}")
             print(self.val_metric.__str__())
             return np.mean(loss_list), self.val_metric.accuracy(), self.val_metric.per_class_accuracy()
 
@@ -171,9 +180,12 @@ class ImgClassificationTrainer(BaseTrainer):
                 if pc_acc_val > best_val_pc_acc:
                     best_val_pc_acc = pc_acc_val
                     self.model.save(self.training_save_dir)
-            self.write_to_tensorboard(epoch, loss_train, acc_train, pc_acc_train, "train")
+            self.write_to_tensorboard(epoch, loss_train, acc_train, pc_acc_train, "train", self.optimizer.param_groups[0]['lr'])
+        self.writer.close()
 
-    def write_to_tensorboard(self, epoch, loss, acc, pc_acc, mode):
+    def write_to_tensorboard(self, epoch, loss, acc, pc_acc, mode, lr=None):
         self.writer.add_scalar(f'Loss/{mode}', loss, epoch)
         self.writer.add_scalar(f'Accuracy/{mode}', acc, epoch)
         self.writer.add_scalar(f'PerClassAcc/{mode}', pc_acc, epoch)
+        if lr:
+            self.writer.add_scalar(f'LearningRate/{mode}', lr, epoch)
