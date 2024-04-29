@@ -13,7 +13,7 @@ from dlvc.datasets.dataset import Subset
 import numpy as np
 
 ## SET CONGFIG_NAME TO THE NAME OF THE CONFIGURATION YOU WANT TO TEST
-CONFIG_NAME = "initial_config"
+CONFIG_NAME = "modified_resnet18_adam_cosineannealinglr_gradclipping_dropout0.2_lr0.002"
 
 def test(args):
     transform = v2.Compose([v2.ToImage(), 
@@ -27,6 +27,9 @@ def test(args):
     num_test_data = len(test_data)
 
     model = DeepClassifier(resnet18(num_classes=10))
+    # Change the model if the configuration is a modified model
+    if CONFIG_NAME.startswith("mod"):
+        model.net.conv1 = torch.nn.Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
     model.load(args.path_to_trained_model)
     model.to(device)
 

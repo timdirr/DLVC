@@ -11,7 +11,7 @@ from dlvc.metrics import Accuracy
 from dlvc.trainer import ImgClassificationTrainer
 from dlvc.datasets.cifar10 import CIFAR10Dataset
 from dlvc.datasets.dataset import Subset
-from dlvc.models.cnn import YourCNN
+from dlvc.models.cnn import YourCNN, YourCNN2
 import torch.nn.functional as F
 
 CONFIG = {
@@ -25,7 +25,8 @@ CONFIG = {
     "scheduler": "customscheduler",
     "weight_decay": 0.1,
     "momentum": None,
-    "warmup_steps": 5 # only used for custom scheduler
+    "warmup_steps": 10, # only used for custom scheduler
+    "modified": True
 }
 
 def train(args):
@@ -45,7 +46,10 @@ def train(args):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = DeepClassifier(YourCNN())
+    if CONFIG["modified"]:
+        model = DeepClassifier(YourCNN2())
+    else:
+        model = DeepClassifier(YourCNN())
     model.to(device)
 
     if CONFIG["optimizer"] == "adamw":
@@ -104,7 +108,10 @@ if __name__ == "__main__":
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
     args.gpu_id = 0
 
-    config_str = CONFIG["optimizer"] + "_lr_" + str(CONFIG["lr"]) + "_"
+    config_str = ""
+    if CONFIG["modified"]:
+        config_str = "mod_"
+    config_str += CONFIG["optimizer"] + "_lr_" + str(CONFIG["lr"]) + "_"
     if CONFIG["optimizer"] == "sgd" and CONFIG["momentum"] is not None:
         config_str += "mom_" + str(CONFIG["momentum"]) + "_"
     config_str += CONFIG["scheduler"] + "_"

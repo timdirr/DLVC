@@ -15,18 +15,17 @@ from dlvc.models.vit import SimpleViT
 import torch.nn.functional as F
 
 CONFIG = {
-    "lr": 1e-3,
+    "lr": 15e-4,
     "lr_last": 1e-5, 
-    "num_epochs": 100,
+    "num_epochs": 120,
     "batch_size": 256,
     "grad_clipping": 1,
     "val_frequency": 5,
-    "dropout": None,
     "optimizer": "adamw",
     "scheduler": "customscheduler",
     "weight_decay": 5e-5,
     "momentum": None,
-    "warmup_steps": 5 # only used for custom scheduler
+    "warmup_steps": 8 # only used for custom scheduler
 }
 
 def train(args):
@@ -48,9 +47,6 @@ def train(args):
 
     model = DeepClassifier(SimpleViT(image_size=32, patch_size=4, num_classes=10, dim=64, depth=7, heads=12, mlp_dim=128))
     model.to(device)
-
-    if CONFIG["dropout"] is not None:
-        model.net.fc.register_forward_hook(lambda m, inp, out: F.dropout(out, p=CONFIG["dropout"], training=m.training))
 
     if CONFIG["optimizer"] == "adamw":
         optimizer = torch.optim.AdamW(model.parameters(), lr=CONFIG["lr"], amsgrad=True, weight_decay=CONFIG["weight_decay"])
@@ -115,10 +111,10 @@ if __name__ == "__main__":
     config_str += "ep_" + str(CONFIG["num_epochs"])
     if CONFIG["grad_clipping"] is not None:
         config_str += "_gclip_" + str(CONFIG["grad_clipping"])
-    if CONFIG["dropout"] is not None:
-        config_str += "_drop_" + str(CONFIG["dropout"])
     if CONFIG["weight_decay"] is not None:
         config_str += "_wd_" + str(CONFIG["weight_decay"])
+    if CONFIG["warmup_steps"] is not None and CONFIG["scheduler"] == "customscheduler":
+        config_str += "_wup_" + str(CONFIG["warmup_steps"])
 
     args.save_dir = os.path.join("advanced_testing", "vit", config_str)
     os.makedirs(args.save_dir, exist_ok=True)
