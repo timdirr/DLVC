@@ -26,7 +26,8 @@ CONFIG = {
     "scheduler": "cosine",
     "weight_decay": 0.1,
     "modified": True, 
-    "momentum": None
+    "momentum": None, 
+    "warmup_steps": 5 # only used for custom scheduler
 }
 
 def train(args):
@@ -94,7 +95,7 @@ def train(args):
     trainer.train()
 
 def custom_lr_scheduler(current_step: int):
-    warmup_steps = 5
+    warmup_steps = CONFIG["warmup_steps"]
     if current_step < warmup_steps:  
         return float(current_step / warmup_steps)
     else:
