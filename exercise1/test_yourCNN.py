@@ -10,7 +10,7 @@ from dlvc.models.class_model import DeepClassifier
 from dlvc.metrics import Accuracy
 from dlvc.datasets.cifar10 import CIFAR10Dataset
 from dlvc.datasets.dataset import Subset
-from dlvc.models.cnn import YourCNN
+from dlvc.models.cnn import YourCNN, YourCNN2
 import numpy as np
 
 ## SET CONGFIG_NAME TO THE NAME OF THE CONFIGURATION YOU WANT TO TEST
@@ -26,8 +26,10 @@ def test(args):
         
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     num_test_data = len(test_data)
-
-    model = DeepClassifier(YourCNN())
+    if CONFIG_NAME.startswith("mod"):
+        model = DeepClassifier(YourCNN2())
+    else:
+        model = DeepClassifier(YourCNN())
     model.load(args.path_to_trained_model)
     model.to(device)
 
