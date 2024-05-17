@@ -48,8 +48,6 @@ class Accuracy(PerformanceMeasure):
         '''
         Resets the internal state.
         '''
-        ###### implemented code ########
-
         self.target_list = []
         self.prediction_list = []
         self.current_class_acc = np.zeros(len(self.classes))
@@ -62,8 +60,8 @@ class Accuracy(PerformanceMeasure):
         target must have shape (s,) and values between 0 and c-1 (true class labels).
         Raises ValueError if the data shape or values are unsupported.
         '''
-
-        # TODO: wird hier danach abgefragt ob die Summe 1 ergibt? with each row being a class-score vector
+        prediction = prediction.cpu()
+        target = target.cpu()
 
         # Check if prediction has the correct shape
         if prediction.shape[1] != len(self.classes):
@@ -83,32 +81,18 @@ class Accuracy(PerformanceMeasure):
             np.argmax(prediction.detach().numpy(), -1))
         self.target_list += list(np.array(target))
         self.prediction_list += list(prediction_argmax)
-        # TODO errors
-
-        # do we really need to call this here? unnecessary performance overhead
-        # self.accuracy()
-        # self.per_class_accuracy()
-
-        return None  # muss das?
 
     def __str__(self) -> str:
         '''
         Return a string representation of the performance, accuracy and per class accuracy.
         '''
-
-        #### implemented code ####
         current_acc = self.accuracy()
         curr_per_class_acc = self.per_class_accuracy()
 
-        text = ""
-        text += f"accuracy: {current_acc}"
-        text += "\n"
-        text += f"per class accuracy: {curr_per_class_acc}"
-        text += "\n"
+        text = f"accuracy: {round(current_acc,4)}\n"
+        text += f"per class accuracy: {round(curr_per_class_acc, 4)}\n"
         for i, c in enumerate(self.classes):
-            text += f"Accuracy for class {self.classes[i]
-                                          }: is {self.current_class_acc[i]}"
-            text += "\n"
+            text += f"Accuracy for class: {self.classes[i]}   \tis {round(self.current_class_acc[i], 2)}\n"
 
         return text
 
@@ -117,8 +101,6 @@ class Accuracy(PerformanceMeasure):
         Compute and return the accuracy as a float between 0 and 1.
         Returns 0 if no data is available (after resets).
         '''
-
-        #### implemented code ####
         if len(self.target_list) != 0 and len(self.prediction_list) != 0:
 
             target_arr = np.array(self.target_list)
@@ -137,8 +119,6 @@ class Accuracy(PerformanceMeasure):
         Compute and return the per class accuracy as a float between 0 and 1.
         Returns 0 if no data is available (after resets).
         '''
-
-        #### implemented code ####
         target_arr = np.array(self.target_list)
         prediction_arr = np.array(self.prediction_list)
 
