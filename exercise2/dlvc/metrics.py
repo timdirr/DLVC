@@ -108,6 +108,8 @@ class SegMetrics(PerformanceMeasure):
             for i in range(_shape[0]):
                 for j in range(_shape[1]):
                     for k in range(_shape[2]):
+                        if target[i][j][k] == 255:
+                            continue
                         if pred[i][j][k] == target[i][j][k]:
                             tp[target[i][j][k]] += 1
                         ac[pred[i][j][k]] += 1

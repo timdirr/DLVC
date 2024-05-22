@@ -15,7 +15,6 @@ from dlvc.trainer import ImgSemSegTrainer
 import torch.nn.functional as F
 
 CONFIG = {
-    "pretrained": True,
     "lr": 0.002,
     "lr_last": 0.0001,
     "num_epochs": 100,
@@ -28,7 +27,8 @@ CONFIG = {
     "weight_decay": 0.1,
     "momentum": 0.9,  # only used for sgd
     "warmup_steps": 5,  # only used for custom scheduler
-    "gamma": 0.98  # only used for exponential scheduler
+    "gamma": 0.98,  # only used for exponential scheduler
+    "load_path": "default"  # default loads the pretrained model with the same configuration
 }
 
 
@@ -88,9 +88,9 @@ def train(args):
         SegFormer(num_classes=3 if args.dataset == "oxford" else 19))
     # If you are in the fine-tuning phase:
     if args.dataset == 'oxford':
-        # TODO update the encoder weights of the model with the loaded weights of the pretrained model
-        # e.g. load pretrained weights with: state_dict = torch.load("path to model", map_location='cpu')
-        state_dict = torch.load(args.load_path, map_location='cpu')
+        state_dict = torch.load(CONFIG["load_path"], map_location='cpu')
+        # only keep the encoder weights
+        state_dict = {k: v for k, v in state_dict.items() if 'encoder' in k}
         model.load_state_dict(state_dict)
     model.to(device)
 
@@ -108,7 +108,8 @@ def train(args):
     optimizer.param_groups[0]['initial_lr'] = CONFIG["lr"]
     optimizer.param_groups[0]['last_lr'] = CONFIG["lr_last"]
 
-    loss_fn = torch.nn.CrossEntropyLoss()
+    loss_fn = torch.nn.CrossEntropyLoss(
+        ignore_index=255 if args.dataset == "city" else -100)
 
     train_metric = SegMetrics(classes=train_data.classes_seg)
     val_metric = SegMetrics(classes=val_data.classes_seg)
@@ -171,9 +172,9 @@ if __name__ == "__main__":
     config_str += CONFIG["optimizer"] + "_lr_" + str(CONFIG["lr"]) + "_"
     if CONFIG["optimizer"] == "sgd" and CONFIG["momentum"] is not None:
         config_str += "mom_" + str(CONFIG["momentum"]) + "_"
-    if CONFIG["optimizer"] == "sgd" and CONFIG["gamma"] is not None:
-        config_str += "gamma_" + str(CONFIG["gamma"]) + "_"
     config_str += CONFIG["scheduler"] + "_"
+    if CONFIG["scheduler"] == "exponential" and CONFIG["gamma"] is not None:
+        config_str += "gamma_" + str(CONFIG["gamma"]) + "_"
     config_str += "ep_" + str(CONFIG["num_epochs"])
     if CONFIG["grad_clipping"] is not None:
         config_str += "_gclip_" + str(CONFIG["grad_clipping"])
@@ -182,9 +183,12 @@ if __name__ == "__main__":
     if CONFIG["weight_decay"] is not None:
         config_str += "_wd_" + str(CONFIG["weight_decay"])
 
-    args.save_dir = os.path.join("training", "fcn_resnet50", config_str)
+    args.save_dir = os.path.join("training", "SegFormer", config_str)
     os.makedirs(args.save_dir, exist_ok=True)
     destination = os.path.join(args.save_dir, "train.py")
     shutil.copy(__file__, destination)
 
+    if CONFIG["load_path"] == "default":
+        CONFIG["load_path"] = os.path.join(
+            "training", "SegFormer", config_str.replace("city", "oxford"), "model.pt")
     train(args)

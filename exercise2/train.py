@@ -154,9 +154,9 @@ if __name__ == "__main__":
     config_str += CONFIG["optimizer"] + "_lr_" + str(CONFIG["lr"]) + "_"
     if CONFIG["optimizer"] == "sgd" and CONFIG["momentum"] is not None:
         config_str += "mom_" + str(CONFIG["momentum"]) + "_"
-    if CONFIG["optimizer"] == "sgd" and CONFIG["gamma"] is not None:
-        config_str += "gamma_" + str(CONFIG["gamma"]) + "_"
     config_str += CONFIG["scheduler"] + "_"
+    if CONFIG["scheduler"] == "exponential" and CONFIG["gamma"] is not None:
+        config_str += "gamma_" + str(CONFIG["gamma"]) + "_"
     config_str += "ep_" + str(CONFIG["num_epochs"])
     if CONFIG["grad_clipping"] is not None:
         config_str += "_gclip_" + str(CONFIG["grad_clipping"])
