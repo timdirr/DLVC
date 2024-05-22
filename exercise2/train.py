@@ -11,8 +11,6 @@ from dlvc.models.segment_model import DeepSegmenter
 from dlvc.dataset.oxfordpets import OxfordPetsCustom
 from dlvc.metrics import SegMetrics
 from dlvc.trainer import ImgSemSegTrainer
-import matplotlib.pyplot as plt
-import numpy as np
 import torch.nn.functional as F
 
 CONFIG = {
@@ -98,7 +96,7 @@ def train(args):
     val_metric = SegMetrics(classes=val_data.classes_seg)
     val_frequency = 2
 
-    model_save_dir = Path("saved_models")
+    model_save_dir = Path(args.save_dir)
     model_save_dir.mkdir(exist_ok=True)
 
     if CONFIG["scheduler"] == "cosine":
