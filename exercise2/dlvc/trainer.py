@@ -9,8 +9,6 @@ from dlvc.dataset.oxfordpets import OxfordPetsCustom
 from torch.utils.tensorboard import SummaryWriter
 
 
-# from dlvc.wandb_logger import WandBLogger
-
 class BaseTrainer(metaclass=ABCMeta):
     '''
     Base class of all Trainers.
@@ -123,13 +121,14 @@ class ImgSemSegTrainer(BaseTrainer):
         loss_list = []
         self.model.train()
         self.train_metric.reset()
-        for _, batch in tqdm(enumerate(self.train_data_loader), desc="train", total=len(self.train_data_loader)):
+        for _, batch in tqdm(enumerate(self.train_loader), desc="train", total=len(self.train_loader)):
             self.optimizer.zero_grad()
 
+            images, labels = batch
             labels = labels.squeeze(1) - int(self.subtract_one)
-            batch, labels = batch.to(self.device), labels.to(self.device)
+            images, labels = images.to(self.device), labels.to(self.device)
 
-            predictions = self.model(batch)
+            predictions = self.model(images)
             if isinstance(predictions, collections.OrderedDict):
                 predictions = predictions['out']
 
@@ -153,7 +152,7 @@ class ImgSemSegTrainer(BaseTrainer):
         print(f"Epoch {epoch_idx}")
         print(f"Loss: {round(np.mean(loss_list), 4)}")
         print(self.train_metric)
-        return np.mean(loss_list), self.train_metric.mIoU
+        return np.mean(loss_list), self.train_metric.mIoU()
 
     def _val_epoch(self, epoch_idx: int) -> Tuple[float, float]:
         """
@@ -176,10 +175,12 @@ class ImgSemSegTrainer(BaseTrainer):
                 predictions = self.model(inputs)
                 if isinstance(predictions, collections.OrderedDict):
                     predictions = predictions['out']
+
                 loss = self.loss_fn(predictions, labels)
 
                 self.val_metric.update(predictions, labels)
                 loss_list.append(loss.item())
+
             print(f"Validation Epoch {epoch_idx}")
             print(f"Validation Loss: {round(np.mean(loss_list), 4)}")
             print(self.val_metric)

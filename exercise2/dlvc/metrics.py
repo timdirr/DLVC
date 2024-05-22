@@ -77,7 +77,8 @@ class SegMetrics(PerformanceMeasure):
         # if np.max(np.array(target)) > len(self.classes)-1 or np.min(np.array(target)) < 0:
         #     raise ValueError(f"target array contains false values")
 
-        prediction_argmax = np.array(np.argmax(prediction, axis=1))
+        prediction_argmax = np.array(
+            np.argmax(prediction.detach().numpy(), axis=1))
         self.target_list += list(np.array(target))
         self.prediction_list += list(prediction_argmax)
 
@@ -115,12 +116,12 @@ class SegMetrics(PerformanceMeasure):
                         ac[pred[i][j][k]] += 1
                         ac[target[i][j][k]] += 1
             mIoU = 0
-            for i in range(self.classes):
+            for i in range(len(self.classes)):
                 if ac[i] != 0:
                     mIoU += tp[i]/(ac[i]-tp[i])
             else:
                 mIoU += 1
-            mIoU = mIoU/self.classes
+            mIoU = mIoU/len(self.classes)
 
         else:
             mIoU = float(0)
