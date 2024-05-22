@@ -1,12 +1,13 @@
 import collections
 import torch
-from typing import  Tuple
+from typing import Tuple
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from tqdm import tqdm
 
 from dlvc.wandb_logger import WandBLogger
 from dlvc.dataset.oxfordpets import OxfordPetsCustom
+
 
 class BaseTrainer(metaclass=ABCMeta):
     '''
@@ -37,12 +38,14 @@ class BaseTrainer(metaclass=ABCMeta):
 
         pass
 
+
 class ImgSemSegTrainer(BaseTrainer):
     """
     Class that stores the logic for training a model for image classification.
     """
-    def __init__(self, 
-                 model, 
+
+    def __init__(self,
+                 model,
                  optimizer,
                  loss_fn,
                  lr_scheduler,
@@ -51,7 +54,7 @@ class ImgSemSegTrainer(BaseTrainer):
                  train_data,
                  val_data,
                  device,
-                 num_epochs: int, 
+                 num_epochs: int,
                  training_save_dir: Path,
                  batch_size: int = 4,
                  val_frequency: int = 5):
@@ -78,9 +81,7 @@ class ImgSemSegTrainer(BaseTrainer):
             - Optionally use weights & biases for tracking metrics and loss: initializer W&B logger
 
         '''
-        
 
-    
         self.model = model
         self.optimizer = optimizer
         self.loss_fn = loss_fn
@@ -95,22 +96,23 @@ class ImgSemSegTrainer(BaseTrainer):
         self.val_metric = val_metric
 
         self.subtract_one = isinstance(train_data, OxfordPetsCustom)
-        
+
         self.train_data_loader = torch.utils.data.DataLoader(train_data,
-                                          batch_size=batch_size,
-                                          shuffle=True,
-                                          num_workers=2)
-    
+                                                             batch_size=batch_size,
+                                                             shuffle=True,
+                                                             num_workers=2)
+
         self.val_data_loader = torch.utils.data.DataLoader(val_data,
-                                          batch_size=batch_size,
-                                          shuffle=False,
-                                          num_workers=1)
+                                                           batch_size=batch_size,
+                                                           shuffle=False,
+                                                           num_workers=1)
         self.num_train_data = len(train_data)
         self.num_val_data = len(val_data)
 
         self.checkpoint_dir = training_save_dir
-        self.wandb_logger = WandBLogger(enabled=True, model=model, run_name=model.net._get_name())
-        
+        self.wandb_logger = WandBLogger(
+            enabled=True, model=model, run_name=model.net._get_name())
+
     def _train_epoch(self, epoch_idx: int) -> Tuple[float, float]:
         """
         Training logic for one epoch. 
@@ -122,7 +124,7 @@ class ImgSemSegTrainer(BaseTrainer):
         self.model.train()
         epoch_loss = 0.
         self.train_metric.reset()
-        
+
         # train epoch
         for i, batch in tqdm(enumerate(self.train_data_loader), desc="train", total=len(self.train_data_loader)):
 
@@ -132,14 +134,13 @@ class ImgSemSegTrainer(BaseTrainer):
             # get the inputs; data is a list of [inputs, labels]
             inputs, labels = batch
             labels = labels.squeeze(1)-1
- 
-            batch_size = inputs.shape[0] # b x ..?
+
+            batch_size = inputs.shape[0]  # b x ..?
 
             # Make predictions for this batch
             outputs = self.model(inputs.to(self.device))
             if isinstance(outputs, collections.OrderedDict):
                 outputs = outputs['out']
-
 
             # Compute the loss and its gradients
             loss = self.loss_fn(outputs, labels.to(self.device))
@@ -150,19 +151,20 @@ class ImgSemSegTrainer(BaseTrainer):
 
             # Gather metrics
             epoch_loss += (loss.item() * batch_size)
-            self.train_metric.update(outputs.detach().cpu(), labels.detach().cpu())
-      
+            self.train_metric.update(
+                outputs.detach().cpu(), labels.detach().cpu())
+
         self.lr_scheduler.step()
         epoch_loss /= self.num_train_data
         epoch_mIoU = self.train_metric.mIoU()
-        
+
         print(f"______epoch {epoch_idx} \n")
         print(f"Loss: {epoch_loss}")
         print(self.train_metric)
 
         return epoch_loss, epoch_mIoU
 
-    def _val_epoch(self, epoch_idx:int) -> Tuple[float, float]:
+    def _val_epoch(self, epoch_idx: int) -> Tuple[float, float]:
         """
         Validation logic for one epoch. 
         Prints current metrics at end of epoch.
@@ -178,7 +180,7 @@ class ImgSemSegTrainer(BaseTrainer):
                 # get the inputs; data is a tuple of [inputs, labels]
                 inputs, labels = batch
                 labels = labels.squeeze(1)-1
-                batch_size = inputs.shape[0] 
+                batch_size = inputs.shape[0]
 
                 # Make predictions for this batch
                 outputs = self.model(inputs.to(self.device))
@@ -232,14 +234,6 @@ class ImgSemSegTrainer(BaseTrainer):
                     self.model.save(Path(self.checkpoint_dir), suffix="last")
 
             self.wandb_logger.log(wandb_log)
-  
+
     def dispose(self) -> None:
         self.wandb_logger.finish()
-
-
-
-
-            
-            
-
-
