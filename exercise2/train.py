@@ -14,20 +14,28 @@ from dlvc.trainer import ImgSemSegTrainer
 import torch.nn.functional as F
 
 CONFIG = {
-    "pretrained": True,
-    "lr": 0.002,
-    "lr_last": 0.0001,
-    "num_epochs": 100,
-    "batch_size": 256,
-    "grad_clipping": 1,
-    "val_frequency": 5,
-    "dropout": 0.2,
+    # ----------------- #
+    # typically changed values
+    # ----------------- #
+    "lr": 0.0001,
     "optimizer": "adamw",
-    "scheduler": "cosine",
+    "scheduler": "exponential",
+    "load_path": "default",  # default loads the pretrained model with the same configuration
+    "pretrained": True,
+
+    # ----------------- #
+    # values that are rarely changed
+    # ----------------- #
+    "num_epochs": 30,
+    "batch_size": 256,
     "weight_decay": 0.1,
+    "gamma": 0.98,  # only used for exponential scheduler
     "momentum": 0.9,  # only used for sgd
+    "dropout": None,
+    "lr_last": None,  # used for some schedulers
+    "val_frequency": 2,
     "warmup_steps": 5,  # only used for custom scheduler
-    "gamma": 0.98  # only used for exponential scheduler
+    "grad_clipping": 1  # dont change, just prevents exploding gradients
 }
 
 
@@ -158,8 +166,6 @@ if __name__ == "__main__":
     if CONFIG["scheduler"] == "exponential" and CONFIG["gamma"] is not None:
         config_str += "gamma_" + str(CONFIG["gamma"]) + "_"
     config_str += "ep_" + str(CONFIG["num_epochs"])
-    if CONFIG["grad_clipping"] is not None:
-        config_str += "_gclip_" + str(CONFIG["grad_clipping"])
     if CONFIG["dropout"] is not None:
         config_str += "_drop_" + str(CONFIG["dropout"])
     if CONFIG["weight_decay"] is not None:

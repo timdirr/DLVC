@@ -15,20 +15,28 @@ from dlvc.trainer import ImgSemSegTrainer
 import torch.nn.functional as F
 
 CONFIG = {
-    "lr": 0.002,
-    "lr_last": 0.0001,
-    "num_epochs": 100,
-    "batch_size": 256,
-    "grad_clipping": 1,
-    "val_frequency": 5,
-    "dropout": 0.2,
+    # ----------------- #
+    # typically changed values
+    # ----------------- #
+    "lr": 0.0001,
+    "freeze": False,  # freeze the encoder weights
     "optimizer": "adamw",
-    "scheduler": "cosine",
+    "scheduler": "exponential",
+    "load_path": "default",  # default loads the pretrained model with the same configuration
+
+    # ----------------- #
+    # values that are rarely changed
+    # ----------------- #
+    "num_epochs": 30,
+    "batch_size": 256,
     "weight_decay": 0.1,
-    "momentum": 0.9,  # only used for sgd
-    "warmup_steps": 5,  # only used for custom scheduler
     "gamma": 0.98,  # only used for exponential scheduler
-    "load_path": "default"  # default loads the pretrained model with the same configuration
+    "momentum": 0.9,  # only used for sgd
+    "dropout": None,
+    "lr_last": None,  # used for some schedulers
+    "val_frequency": 2,
+    "warmup_steps": 5,  # only used for custom scheduler
+    "grad_clipping": 1  # dont change, just prevents exploding gradients
 }
 
 
@@ -92,6 +100,8 @@ def train(args):
         # only keep the encoder weights
         state_dict = {k: v for k, v in state_dict.items() if 'encoder' in k}
         model.load_state_dict(state_dict)
+        if CONFIG["freeze"]:
+            model.net.encoder.requires_grad_(False)
     model.to(device)
 
     if CONFIG["dropout"] is not None:
@@ -106,14 +116,15 @@ def train(args):
             model.parameters(), lr=CONFIG["lr"], momentum=CONFIG["momentum"], weight_decay=5e-4)
 
     optimizer.param_groups[0]['initial_lr'] = CONFIG["lr"]
-    optimizer.param_groups[0]['last_lr'] = CONFIG["lr_last"]
+    if CONFIG["lr_last"] is not None:
+        optimizer.param_groups[0]['last_lr'] = CONFIG["lr_last"]
 
     loss_fn = torch.nn.CrossEntropyLoss(
         ignore_index=255 if args.dataset == "city" else -100)
 
     train_metric = SegMetrics(classes=train_data.classes_seg)
     val_metric = SegMetrics(classes=val_data.classes_seg)
-    val_frequency = 2
+    val_frequency = CONFIG["val_frequency"]
 
     model_save_dir = Path(args.save_dir)
     model_save_dir.mkdir(exist_ok=True)
@@ -176,19 +187,22 @@ if __name__ == "__main__":
     if CONFIG["scheduler"] == "exponential" and CONFIG["gamma"] is not None:
         config_str += "gamma_" + str(CONFIG["gamma"]) + "_"
     config_str += "ep_" + str(CONFIG["num_epochs"])
-    if CONFIG["grad_clipping"] is not None:
-        config_str += "_gclip_" + str(CONFIG["grad_clipping"])
     if CONFIG["dropout"] is not None:
         config_str += "_drop_" + str(CONFIG["dropout"])
     if CONFIG["weight_decay"] is not None:
         config_str += "_wd_" + str(CONFIG["weight_decay"])
+
+    # default load path is the pretrained model with the same configuration
+    if CONFIG["load_path"] == "default" and args.dataset == "oxford":
+        CONFIG["load_path"] = os.path.join(
+            "training", "SegFormer", config_str.replace("city", "oxford"), "model.pt")
+
+    if CONFIG["freeze"] and args.dataset == "oxford":
+        config_str += "_freeze"
 
     args.save_dir = os.path.join("training", "SegFormer", config_str)
     os.makedirs(args.save_dir, exist_ok=True)
     destination = os.path.join(args.save_dir, "train.py")
     shutil.copy(__file__, destination)
 
-    if CONFIG["load_path"] == "default":
-        CONFIG["load_path"] = os.path.join(
-            "training", "SegFormer", config_str.replace("city", "oxford"), "model.pt")
     train(args)
