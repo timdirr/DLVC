@@ -28,7 +28,7 @@ CONFIG = {
     # values that are rarely changed
     # ----------------- #
     "num_epochs": 30,
-    "batch_size": 256,
+    "batch_size": 64,
     "weight_decay": 0.1,
     "gamma": 0.98,  # only used for exponential scheduler
     "momentum": 0.9,  # only used for sgd
