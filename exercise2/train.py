@@ -43,18 +43,15 @@ def train(args):
 
     train_transform = v2.Compose([v2.ToImage(),
                                   v2.ToDtype(torch.float32, scale=True),
-                                  v2.Resize(
-                                      size=(64, 64), interpolation=v2.InterpolationMode.NEAREST),
+                                  v2.Resize(size=(64, 64), interpolation=v2.InterpolationMode.NEAREST),
                                   v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
     train_transform2 = v2.Compose([v2.ToImage(),
                                    v2.ToDtype(torch.long, scale=False),
-                                   # ,
                                    v2.Resize(size=(64, 64), interpolation=v2.InterpolationMode.NEAREST)])
 
     val_transform = v2.Compose([v2.ToImage(),
                                 v2.ToDtype(torch.float32, scale=True),
-                                v2.Resize(
-                                    size=(64, 64), interpolation=v2.InterpolationMode.NEAREST),
+                                v2.Resize(size=(64, 64), interpolation=v2.InterpolationMode.NEAREST),
                                 v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])]
                                )
     val_transform2 = v2.Compose([v2.ToImage(),

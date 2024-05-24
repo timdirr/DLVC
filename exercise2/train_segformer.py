@@ -20,18 +20,18 @@ CONFIG = {
     # ----------------- #
     # typically changed values
     # ----------------- #
-    "lr": 0.0001,
+    "lr": 0.00006,
     "freeze": False,  # freeze the encoder weights
     "optimizer": "adamw",
     "scheduler": "exponential",
     "load_path": "default",  # default loads the pretrained model with the same configuration
-
+    "fine_tune": False,
     # ----------------- #
     # values that are rarely changed
     # ----------------- #
     "num_epochs": 30,
-    "batch_size": 64,
-    "weight_decay": 0.1,
+    "batch_size": 8,
+    "weight_decay": 0.01,
     "gamma": 0.98,  # only used for exponential scheduler
     "momentum": 0.9,  # only used for sgd
     "dropout": None,
@@ -46,40 +46,34 @@ def train(args):
 
     train_transform = v2.Compose([v2.ToImage(),
                                   v2.ToDtype(torch.float32, scale=True),
-                                  v2.Resize(
-                                      size=(64, 64), interpolation=v2.InterpolationMode.NEAREST),
+                                  v2.Resize(size=(64, 64), interpolation=v2.InterpolationMode.NEAREST),
                                   v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     train_transform2 = v2.Compose([v2.ToImage(),
                                    v2.ToDtype(torch.long, scale=False),
-                                   # ,
                                    v2.Resize(size=(64, 64), interpolation=v2.InterpolationMode.NEAREST)])
 
-    train_transform_c = v2.Compose([v2.ToImage(),
+    train_transform_alt = v2.Compose([v2.ToImage(),
                                     v2.ToDtype(torch.float32, scale=True),
-                                    v2.Resize(
-        size=(192, 192), interpolation=v2.InterpolationMode.NEAREST),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+                                    v2.Resize(size=(192, 192), interpolation=v2.InterpolationMode.NEAREST),
+                                    v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
-    train_transform2_c = v2.Compose([v2.ToImage(),
+    train_transform2_alt = v2.Compose([v2.ToImage(),
                                      v2.ToDtype(torch.long, scale=False),
-                                     # ,
                                      v2.Resize(size=(192, 192), interpolation=v2.InterpolationMode.NEAREST)])
 
     val_transform = v2.Compose([v2.ToImage(),
                                 v2.ToDtype(torch.float32, scale=True),
-                                v2.Resize(
-                                    size=(64, 64), interpolation=v2.InterpolationMode.NEAREST),
+                                v2.Resize(size=(64, 64), interpolation=v2.InterpolationMode.NEAREST),
                                 v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
     val_transform2 = v2.Compose([v2.ToImage(),
                                  v2.ToDtype(torch.long, scale=False),
                                  v2.Resize(size=(64, 64), interpolation=v2.InterpolationMode.NEAREST)])
 
-    val_transform_c = v2.Compose([v2.ToImage(),
+    val_transform_alt = v2.Compose([v2.ToImage(),
                                   v2.ToDtype(torch.float32, scale=True),
-                                  v2.Resize(
-        size=(192, 192), interpolation=v2.InterpolationMode.NEAREST),
-        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+                                  v2.Resize(size=(192, 192), interpolation=v2.InterpolationMode.NEAREST),
+                                  v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
     val_transform2_c = v2.Compose([v2.ToImage(),
                                    v2.ToDtype(torch.long, scale=False),
                                    v2.Resize(size=(192, 192), interpolation=v2.InterpolationMode.NEAREST)])
@@ -103,14 +97,14 @@ def train(args):
                                       split="train",
                                       mode="fine",
                                       target_type='semantic',
-                                      transform=train_transform_c,
-                                      target_transform=train_transform2_c)
+                                      transform=train_transform,
+                                      target_transform=train_transform2)
         val_data = CityscapesCustom(root="data/cityscapes/",
                                     split="val",
                                     mode="fine",
                                     target_type='semantic',
-                                    transform=val_transform_c,
-                                    target_transform=val_transform2_c)
+                                    transform=val_transform,
+                                    target_transform=val_transform2)
         # img, label = train_data.__getitem__(0)
         # img = img.numpy()
         # plt.imshow(np.transpose(img, (1, 2, 0)))
@@ -121,8 +115,9 @@ def train(args):
 
     model = DeepSegmenter(
         SegFormer(num_classes=3 if args.dataset == "oxford" else 19))
-    # If you are in the fine-tuning phase:
-    if args.dataset == 'oxford':
+    
+    ## for fine tuning
+    if args.dataset == 'oxford' and CONFIG["fine_tune"]:
         state_dict = torch.load(CONFIG["load_path"], map_location='cpu')
         # only keep the encoder weights
         state_dict = {k: v for k, v in state_dict.items() if 'encoder' in k}
@@ -131,6 +126,7 @@ def train(args):
             model.net.encoder.requires_grad_(False)
     model.to(device)
 
+    # not working atm
     if CONFIG["dropout"] is not None:
         model.net.fc.register_forward_hook(lambda m, inp, out: F.dropout(
             out, p=CONFIG["dropout"], training=m.training))
@@ -204,7 +200,7 @@ if __name__ == "__main__":
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
     args.gpu_id = 0
     args.num_epochs = 31
-    args.dataset = "city"
+    args.dataset = "city"  
 
     config_str = args.dataset + "_"
     config_str += CONFIG["optimizer"] + "_lr_" + str(CONFIG["lr"]) + "_"
@@ -222,8 +218,10 @@ if __name__ == "__main__":
     # default load path is the pretrained model with the same configuration
     if CONFIG["load_path"] == "default" and args.dataset == "oxford":
         CONFIG["load_path"] = os.path.join(
-            "training", "SegFormer", config_str.replace("city", "oxford"), "model.pt")
-
+            "training", "SegFormer", config_str.replace("city", "oxford"), "SegFormer_model.pth")
+    
+    if CONFIG["fine_tune"] and args.dataset == "oxford":
+        config_str += "_fine_tune"
     if CONFIG["freeze"] and args.dataset == "oxford":
         config_str += "_freeze"
 

@@ -40,7 +40,8 @@ class SegMetrics(PerformanceMeasure):
     '''
 
     def __init__(self, classes):
-        self.classes = classes
+        self.classes = classes#
+        self.num_classes = len(classes)
 
         self.reset()
 
@@ -48,8 +49,10 @@ class SegMetrics(PerformanceMeasure):
         '''
         Resets the internal state.
         '''
-        self.target_list = []
+        self.target_list  = []
         self.prediction_list = []
+        self.needs_recalculation = True
+        self.mIoU_val = 0
 
     def update(self, prediction: torch.Tensor,
                target: torch.Tensor) -> None:
@@ -60,8 +63,8 @@ class SegMetrics(PerformanceMeasure):
         Raises ValueError if the data shape or values are unsupported.
         Make sure to not include pixels of value 255 in the calculation since those are to be ignored. 
         '''
-        prediction = prediction.cpu()
-        target = target.cpu()
+        prediction = prediction.detach().cpu()
+        target = target.detach().cpu()
 
         # Check if prediction has the correct shape
         if prediction.shape[1] != len(self.classes):
@@ -73,14 +76,27 @@ class SegMetrics(PerformanceMeasure):
             raise ValueError(f"Prediction shape does not match target shape: {
                              prediction.shape} vs {target.shape} ")
 
-        # # Check if the number of classes in prediction matches the number of classes in target
-        # if np.max(np.array(target)) > len(self.classes)-1 or np.min(np.array(target)) < 0:
-        #     raise ValueError(f"target array contains false values")
+        self.needs_recalculation = True
 
-        prediction_argmax = np.array(
-            np.argmax(prediction.detach().numpy(), axis=1))
-        self.target_list += list(np.array(target))
-        self.prediction_list += list(prediction_argmax)
+        prediction = torch.argmax(prediction, dim=1)
+        prediction = torch.nn.functional.one_hot(prediction, num_classes=self.num_classes).movedim(-1, 1)
+
+        indeces = target == 255
+        target[indeces] = self.num_classes
+        target = torch.nn.functional.one_hot(target, num_classes=20 if self.num_classes == 19 else 3).movedim(-1, 1) 
+
+        if self.num_classes == 19:
+            mask = target[:, -1, :, :] 
+            target = target[:, :-1, :, :]
+            prediction = self.masking(prediction, mask)
+
+        self.target_list.append(target)
+        self.prediction_list.append(prediction)
+
+    def masking(self, input, mask):
+        input = torch.permute(input, (1, 2, 3, 0))
+        mask = torch.abs(torch.permute(mask, (1, 2, 0))-1)
+        return torch.permute(input*mask, (3, 0, 1, 2))
 
     def __str__(self):
         '''
@@ -96,34 +112,23 @@ class SegMetrics(PerformanceMeasure):
         If the denominator for IoU calculation for one of the classes is 0,
         use 0 as IoU for this class.
         '''
+        if not self.needs_recalculation:
+            return self.mIoU_val
+        
         if len(self.target_list) != 0 and len(self.prediction_list) != 0:
+            predictions = torch.cat(self.prediction_list, dim=0)
+            targets = torch.cat(self.target_list, dim=0)
 
-            target = np.array(self.target_list)
-            pred = np.array(self.prediction_list)
-            _shape = target.shape
+            dim = [2, 3]
 
-            # tp = true positive = A and B
-            tp = np.zeros(len(self.classes))
-            # ac = all classifications = A + B
-            ac = np.zeros(len(self.classes))
-            for i in range(_shape[0]):
-                for j in range(_shape[1]):
-                    for k in range(_shape[2]):
-                        if target[i][j][k] == 255:
-                            continue
-                        if pred[i][j][k] == target[i][j][k]:
-                            tp[target[i][j][k]] += 1
-                        ac[pred[i][j][k]] += 1
-                        ac[target[i][j][k]] += 1
-            mIoU = 0
-            for i in range(len(self.classes)):
-                if ac[i] != 0:
-                    mIoU += tp[i]/(ac[i]-tp[i])
-            else:
-                mIoU += 1
-            mIoU = mIoU/len(self.classes)
+            intersection = torch.sum(predictions & targets, dim=dim)
+            union =  torch.sum(targets, dim=dim) + torch.sum(predictions, dim=dim) - intersection        
 
+            IoU = (intersection + 1e-7) / (union + 1e-7)
+            mIoU = torch.mean(IoU).item()
         else:
             mIoU = float(0)
 
+        self.mIoU_val = mIoU
+        self.needs_recalculation = False
         return mIoU
