@@ -13,6 +13,8 @@ from dlvc.dataset.oxfordpets import OxfordPetsCustom
 from dlvc.metrics import SegMetrics
 from dlvc.trainer import ImgSemSegTrainer
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
+import numpy as np
 
 CONFIG = {
     # ----------------- #
@@ -53,6 +55,17 @@ def train(args):
                                    # ,
                                    v2.Resize(size=(64, 64), interpolation=v2.InterpolationMode.NEAREST)])
 
+    train_transform_c = v2.Compose([v2.ToImage(),
+                                    v2.ToDtype(torch.float32, scale=True),
+                                    v2.Resize(
+        size=(192, 192), interpolation=v2.InterpolationMode.NEAREST),
+        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+
+    train_transform2_c = v2.Compose([v2.ToImage(),
+                                     v2.ToDtype(torch.long, scale=False),
+                                     # ,
+                                     v2.Resize(size=(192, 192), interpolation=v2.InterpolationMode.NEAREST)])
+
     val_transform = v2.Compose([v2.ToImage(),
                                 v2.ToDtype(torch.float32, scale=True),
                                 v2.Resize(
@@ -61,6 +74,15 @@ def train(args):
     val_transform2 = v2.Compose([v2.ToImage(),
                                  v2.ToDtype(torch.long, scale=False),
                                  v2.Resize(size=(64, 64), interpolation=v2.InterpolationMode.NEAREST)])
+
+    val_transform_c = v2.Compose([v2.ToImage(),
+                                  v2.ToDtype(torch.float32, scale=True),
+                                  v2.Resize(
+        size=(192, 192), interpolation=v2.InterpolationMode.NEAREST),
+        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+    val_transform2_c = v2.Compose([v2.ToImage(),
+                                   v2.ToDtype(torch.long, scale=False),
+                                   v2.Resize(size=(192, 192), interpolation=v2.InterpolationMode.NEAREST)])
 
     if args.dataset == "oxford":
         train_data = OxfordPetsCustom(root="data/",
@@ -81,14 +103,19 @@ def train(args):
                                       split="train",
                                       mode="fine",
                                       target_type='semantic',
-                                      transform=train_transform,
-                                      target_transform=train_transform2)
+                                      transform=train_transform_c,
+                                      target_transform=train_transform2_c)
         val_data = CityscapesCustom(root="data/cityscapes/",
                                     split="val",
                                     mode="fine",
                                     target_type='semantic',
-                                    transform=val_transform,
-                                    target_transform=val_transform2)
+                                    transform=val_transform_c,
+                                    target_transform=val_transform2_c)
+        # img, label = train_data.__getitem__(0)
+        # img = img.numpy()
+        # plt.imshow(np.transpose(img, (1, 2, 0)))
+        # plt.show()
+        # return
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
