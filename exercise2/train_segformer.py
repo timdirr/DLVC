@@ -30,7 +30,7 @@ CONFIG = {
     # values that are rarely changed
     # ----------------- #
     "num_epochs": 30,
-    "batch_size": 8,
+    "batch_size": 128,
     "weight_decay": 0.01,
     "gamma": 0.98,  # only used for exponential scheduler
     "momentum": 0.9,  # only used for sgd
@@ -199,8 +199,7 @@ if __name__ == "__main__":
         args = args.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu_id)
     args.gpu_id = 0
-    args.num_epochs = 31
-    args.dataset = "city"  
+    args.dataset = "oxford"  
 
     config_str = args.dataset + "_"
     config_str += CONFIG["optimizer"] + "_lr_" + str(CONFIG["lr"]) + "_"
