@@ -25,7 +25,7 @@ CONFIG = {
     "optimizer": "adamw",
     "scheduler": "exponential",
     "load_path": "default",  # default loads the pretrained model with the same configuration
-    "fine_tune": False,
+    "fine_tune": True,
     # ----------------- #
     # values that are rarely changed
     # ----------------- #
@@ -118,10 +118,7 @@ def train(args):
     
     ## for fine tuning
     if args.dataset == 'oxford' and CONFIG["fine_tune"]:
-        state_dict = torch.load(CONFIG["load_path"], map_location='cpu')
-        # only keep the encoder weights
-        state_dict = {k: v for k, v in state_dict.items() if 'encoder' in k}
-        model.load_state_dict(state_dict)
+        model.load(CONFIG["load_path"], encoder_only=True)
         if CONFIG["freeze"]:
             model.net.encoder.requires_grad_(False)
     model.to(device)
@@ -217,7 +214,7 @@ if __name__ == "__main__":
     # default load path is the pretrained model with the same configuration
     if CONFIG["load_path"] == "default" and args.dataset == "oxford":
         CONFIG["load_path"] = os.path.join(
-            "training", "SegFormer", config_str.replace("city", "oxford"), "SegFormer_model.pth")
+            "training", "SegFormer", config_str.replace("oxford", "city"), "SegFormer_model.pth")
     
     if CONFIG["fine_tune"] and args.dataset == "oxford":
         config_str += "_fine_tune"

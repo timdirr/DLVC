@@ -1,3 +1,4 @@
+from typing import Any, Mapping
 import torch
 import torch.nn as nn
 from pathlib import Path
@@ -23,13 +24,15 @@ class DeepSegmenter(nn.Module):
 
         torch.save(self.net.state_dict(), path)
 
-    def load(self, path):
+    def load(self, path, encoder_only=False):
         '''
         Loads model from path
         Does not work with transfer model
         '''
 
         state_dict = torch.load(path, map_location='cpu')
+        if encoder_only:
+            state_dict = {k: v for k, v in state_dict.items() if 'encoder' in k}
 
         local_dict = self.net.state_dict()
 
