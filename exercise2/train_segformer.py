@@ -21,7 +21,7 @@ CONFIG = {
     # typically changed values
     # ----------------- #
     "lr": 0.00006,
-    "freeze": False,  # freeze the encoder weights
+    "freeze": True,  # freeze the encoder weights
     "optimizer": "adamw",
     "scheduler": "exponential",
     "load_path": "default",  # default loads the pretrained model with the same configuration
